@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#4F46E5">
+  <link rel="manifest" href="manifest.json">
+  <title>IELTS 1000 - 雅思每日学习</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== Top Bar ===== -->
+  <header id="topBar">
+    <h1>IELTS 1000</h1>
+    <div class="topbar-actions">
+      <button class="topbar-btn" id="btnSearch" onclick="App.navigate('settings')" aria-label="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="topbar-btn" id="btnSettings" onclick="App.navigate('settings')" aria-label="Settings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== Main Content ===== -->
+  <main id="mainContent">
+
+    <!-- ====== Page: Dashboard ====== -->
+    <div id="page-dashboard" class="page active">
+      <div class="dash-header">
+        <div class="dash-greeting" id="dashGreeting"></div>
+        <div class="dash-title">今日学习</div>
+        <div class="dash-date" id="dashDate"></div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="label">今日完成</div>
+          <div class="value" id="statToday">0</div>
+          <div class="sub">/ <span id="statGoal">20</span> 句目标</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">连续打卡</div>
+          <div class="value" id="statStreak">0</div>
+          <div class="sub">天</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">已学句子</div>
+          <div class="value" id="statLearned">0</div>
+          <div class="sub">/ 1000</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">掌握率</div>
+          <div class="value" id="statMastery">0%</div>
+          <div class="sub" id="statReviewDue">待复习: 0</div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>📂</span> 选择分类学习
+      </div>
+      <div class="cat-grid" id="catGrid"></div>
+
+      <button class="continue-btn" id="continueBtn" onclick="App.continueLearning()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+        继续学习
+      </button>
+    </div>
+
+    <!-- ====== Page: Card Mode ====== -->
+    <div id="page-card" class="page">
+      <div class="card-mode-top">
+        <select class="cat-select" id="cardCatSelect" onchange="CardMode.changeCategory(this.value)"></select>
+        <span class="counter" id="cardCounter">0 / 0</span>
+      </div>
+      <div class="card-container" id="cardContainer" onclick="CardMode.flip()">
+        <div class="card-inner" id="cardInner">
+          <div class="card-face front">
+            <div class="card-label">Sentence</div>
+            <div class="card-sentence" id="cardFront"></div>
+            <div class="card-tap-hint">Tap to reveal translation</div>
+          </div>
+          <div class="card-face back">
+            <div class="card-label">Translation &amp; Vocabulary</div>
+            <div class="card-translation" id="cardBack"></div>
+            <div class="vocab-list" id="cardVocab"></div>
+          </div>
+        </div>
+      </div>
+      <div class="progress-track"><div class="fill" id="cardProgressFill" style="width:0%"></div></div>
+      <div class="rating-bar">
+        <button class="rating-btn a0" onclick="CardMode.rate(0)">🔄 Again</button>
+        <button class="rating-btn a1" onclick="CardMode.rate(1)">🤔 Hard</button>
+        <button class="rating-btn a2" onclick="CardMode.rate(2)">👍 Good</button>
+        <button class="rating-btn a3" onclick="CardMode.rate(3)">⭐ Easy</button>
+      </div>
+    </div>
+
+    <!-- ====== Page: Fill-in-Blank ====== -->
+    <div id="page-fillblank" class="page">
+      <div class="card-mode-top">
+        <select class="cat-select" id="fillCatSelect" onchange="FillblankMode.changeCategory(this.value)"></select>
+        <span class="counter" id="fillCounter">0 / 0</span>
+      </div>
+      <div class="fillblank-sentence" id="fillSentence"></div>
+      <div class="fillblank-actions">
+        <button class="btn-hint" onclick="FillblankMode.hint()">💡 Hint</button>
+        <button class="btn-submit" onclick="FillblankMode.check()">✓ Check</button>
+      </div>
+      <div class="fillblank-result" id="fillResult"></div>
+      <div class="progress-track"><div class="fill" id="fillProgressFill" style="width:0%"></div></div>
+    </div>
+
+    <!-- ====== Page: Dictation Mode ====== -->
+    <div id="page-dictation" class="page">
+      <div class="card-mode-top">
+        <select class="cat-select" id="dictCatSelect" onchange="DictationMode.changeCategory(this.value)"></select>
+        <span class="counter" id="dictCounter">0 / 0</span>
+      </div>
+      <div class="dictation-controls">
+        <button class="play-btn" id="dictPlayBtn" onclick="DictationMode.play()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+        </button>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600" id="dictCurrentEn"></div>
+          <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">Listen and type what you hear</div>
+        </div>
+        <button class="speed-btn" onclick="DictationMode.toggleSpeed()" id="dictSpeedBtn">1.0x</button>
+      </div>
+      <textarea class="dictation-input" id="dictInput" placeholder="Type the sentence you heard..." rows="4"></textarea>
+      <div class="dictation-compare" id="dictCompare"></div>
+      <div class="dictation-actions">
+        <button class="btn-show-answer" onclick="DictationMode.showAnswer()">👁 Show Answer</button>
+        <button class="btn-check-dict" onclick="DictationMode.check()">✓ Check</button>
+      </div>
+      <div class="progress-track"><div class="fill" id="dictProgressFill" style="width:0%"></div></div>
+    </div>
+
+    <!-- ====== Page: Review ====== -->
+    <div id="page-review" class="page">
+      <div class="review-stats">
+        <div class="review-stat"><div class="num" id="reviewTotal">0</div><div class="label">待复习</div></div>
+        <div class="review-stat"><div class="num" id="reviewOverdue">0</div><div class="label">已逾期</div></div>
+        <div class="review-stat"><div class="num" id="reviewTodayAdd">0</div><div class="label">今日新增</div></div>
+      </div>
+      <div class="section-title">
+        <span>📋</span> 待复习句子
+        <button style="margin-left:auto;font-size:12px;color:var(--primary)" onclick="ReviewMode.startBatchReview()">Batch Review</button>
+      </div>
+      <div class="review-list" id="reviewList"></div>
+      <div class="empty-state" id="reviewEmpty" style="display:none">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <div class="title">全部完成！</div>
+        <div class="desc">所有句子都已复习完毕，<br>继续保持学习节奏。</div>
+      </div>
+    </div>
+
+    <!-- ====== Page: Vocabulary ====== -->
+    <div id="page-vocab" class="page">
+      <input class="vocab-search" id="vocabSearch" placeholder="🔍 Search vocabulary..." oninput="VocabMode.filter()">
+      <div class="vocab-filters" id="vocabFilters"></div>
+      <div id="vocabList"></div>
+      <div class="empty-state" id="vocabEmpty" style="display:none">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <div class="title">还没有收藏词汇</div>
+        <div class="desc">在卡片学习中点击 ★ 即可收藏生词到此处</div>
+      </div>
+    </div>
+
+    <!-- ====== Page: Settings ====== -->
+    <div id="page-settings" class="page">
+      <div class="settings-section">
+        <div class="settings-title">学习设置</div>
+        <div class="setting-row">
+          <div><div class="label">每日目标</div><div class="desc">每天学习的新句子数量</div></div>
+          <input class="num-input" type="number" id="setDailyGoal" value="20" min="5" max="100" onchange="Settings.updateGoal(this.value)">
+        </div>
+        <div class="setting-row">
+          <div><div class="label">新句子/复习比例</div><div class="desc">学习新句与复习旧句的比例</div></div>
+          <select class="cat-select" id="setRatio" onchange="Settings.updateRatio(this.value)" style="width:auto">
+            <option value="0.5">1:2</option>
+            <option value="1" selected>1:1</option>
+            <option value="2">2:1</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">TTS 设置</div>
+        <div class="setting-row">
+          <div><div class="label">朗读语速</div></div>
+          <select class="cat-select" id="setSpeed" onchange="Settings.updateSpeed(this.value)" style="width:auto">
+            <option value="0.7">慢速 0.7x</option>
+            <option value="1" selected>正常 1.0x</option>
+            <option value="1.3">快速 1.3x</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">数据管理</div>
+        <div class="setting-row">
+          <div><div class="label">重置学习进度</div><div class="desc">清除所有学习记录和收藏</div></div>
+          <button style="font-size:12px;color:var(--error);padding:6px 12px;border:1px solid var(--error);border-radius:var(--radius-xs)" onclick="Settings.resetData()">Reset</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">关于</div>
+        <div class="setting-row">
+          <div><div class="label">IELTS 1000</div><div class="desc">v1.0 · 1000句雅思精选 · 语境自学</div></div>
+        </div>
+        <div class="setting-row">
+          <div><div class="label">🎯 学习理念</div><div class="desc">每句皆语境自明——通过上下文自然掌握词汇，无需查词典</div></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== Bottom Navigation ===== -->
+  <nav id="bottomNav">
+    <button class="nav-item active" data-page="dashboard" onclick="App.navigate('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-item" data-page="card" onclick="App.navigate('card')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Cards</span>
+    </button>
+    <button class="nav-item" data-page="fillblank" onclick="App.navigate('fillblank')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span>Fill</span>
+    </button>
+    <button class="nav-item" data-page="dictation" onclick="App.navigate('dictation')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      <span>Listen</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Scripts -->
+<script src="js/data.js"></script>
+<script src="js/srs.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/modules/dashboard.js"></script>
+<script src="js/modules/card-mode.js"></script>
+<script src="js/modules/fillblank-mode.js"></script>
+<script src="js/modules/dictation-mode.js"></script>
+<script src="js/modules/review.js"></script>
+<script src="js/modules/vocabulary.js"></script>
+<script src="js/app.js"></script>
+<!-- Chart.js for dashboard charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</body>
+</html>
