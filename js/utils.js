@@ -27,40 +27,62 @@ const Utils = {
   tts: {
     _voices: null,
     _ready: false,
-    init() {
-      return new Promise((resolve) => {
-        const voices = speechSynthesis.getVoices();
-        if (voices.length > 0) {
-          this._voices = voices.filter(v => v.lang.startsWith('en'));
+
+    async init() {
+      if (this._ready) return;
+      // Chrome bug: getVoices() may return [] on first call
+      const load = () => {
+        const all = speechSynthesis.getVoices();
+        if (all.length) {
+          this._voices = all.filter(v => v.lang.startsWith('en'));
           this._ready = true;
-          resolve();
-        } else {
+        }
+      };
+      load();
+      if (!this._ready) {
+        await new Promise(resolve => {
           speechSynthesis.onvoiceschanged = () => {
-            this._voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-            this._ready = true;
+            load();
+            // Chrome sometimes fires onvoiceschanged before voices are usable
+            setTimeout(load, 200);
             resolve();
           };
-        }
-      });
-    },
-    speak(text, rate = 1, callback) {
-      if (!this._ready) this.init();
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'en-US';
-      utter.rate = rate;
-      if (this._voices && this._voices.length > 0) {
-        // Prefer a female voice
-        const preferred = this._voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen')) || this._voices[0];
-        if (preferred) utter.voice = preferred;
+          // Force Chrome to fire the event
+          speechSynthesis.getVoices();
+        });
+        // Final retry after async gap
+        load();
       }
-      if (callback) utter.onend = callback;
-      speechSynthesis.speak(utter);
-      return utter;
     },
+
+    speak(text, rate = 1, callback) {
+      // Chrome bug: cancel() then immediate speak() can mute audio;
+      // use a micro-delay to separate them
+      window.speechSynthesis.cancel();
+      setTimeout(() => {
+        const utter = new SpeechSynthesisUtterance(text || '');
+        utter.lang = 'en-US';
+        utter.rate = rate;
+        utter.volume = 1;
+        if (this._voices && this._voices.length > 0) {
+          const preferred = this._voices.find(
+            v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Google UK')
+          ) || this._voices[0];
+          utter.voice = preferred;
+        }
+        if (callback) utter.onend = callback;
+        // Chrome fallback: re-read voices in case they changed
+        if (!this._voices || !this._voices.length) {
+          this._voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+        }
+        speechSynthesis.speak(utter);
+      }, 50);
+    },
+
     stop() {
       window.speechSynthesis.cancel();
     },
+
     isPlaying() {
       return window.speechSynthesis.speaking;
     }

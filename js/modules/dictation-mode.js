@@ -60,9 +60,12 @@ const DictationMode = {
     document.getElementById('dictPlayBtn').innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>`;
   },
 
-  play() {
+  async play() {
     if (this._queue.length === 0) return;
     const s = this._queue[this._index];
+
+    // Ensure TTS is ready (first click sometimes needs a warm-up on some browsers)
+    if (!Utils.tts._ready) await Utils.tts.init();
 
     Utils.tts.stop();
 
