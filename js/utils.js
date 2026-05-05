@@ -28,59 +28,109 @@ const Utils = {
     _voices: null,
     _ready: false,
 
+    _loadVoices() {
+      const all = speechSynthesis.getVoices();
+      if (all.length) {
+        this._voices = all.filter(v => v.lang.startsWith('en'));
+        this._ready = true;
+      }
+    },
+
     async init() {
       if (this._ready) return;
-      // Chrome bug: getVoices() may return [] on first call
-      const load = () => {
-        const all = speechSynthesis.getVoices();
-        if (all.length) {
-          this._voices = all.filter(v => v.lang.startsWith('en'));
+
+      this._loadVoices();
+
+      if (!this._ready) {
+        // Chrome: getVoices() returns [] on first call; voices load asynchronously.
+        // onvoiceschanged may fire quickly or never (if already loaded in a previous page).
+        // Use a race between the event and a timeout so we never hang.
+        let fired = false;
+        const onChanged = () => {
+          if (fired) return;
+          fired = true;
+          speechSynthesis.onvoiceschanged = null;
+          this._loadVoices();
+          // Chrome sometimes fires before voices are actually usable
+          setTimeout(() => this._loadVoices(), 200);
+        };
+
+        speechSynthesis.onvoiceschanged = onChanged;
+        // Force Chrome to trigger the event
+        speechSynthesis.getVoices();
+
+        // Race: either voices load within 3s, or we proceed anyway
+        await Promise.race([
+          new Promise(resolve => {
+            const check = () => {
+              if (this._ready) { resolve(); return; }
+              setTimeout(check, 100);
+            };
+            check();
+          }),
+          new Promise(resolve => setTimeout(resolve, 3000))
+        ]);
+
+        speechSynthesis.onvoiceschanged = null;
+        // Final attempt
+        this._loadVoices();
+        // Even if voices aren't loaded, mark ready so we don't block
+        if (!this._ready) {
+          console.warn('TTS: no English voices found, will use default');
           this._ready = true;
         }
-      };
-      load();
-      if (!this._ready) {
-        await new Promise(resolve => {
-          speechSynthesis.onvoiceschanged = () => {
-            load();
-            // Chrome sometimes fires onvoiceschanged before voices are usable
-            setTimeout(load, 200);
-            resolve();
-          };
-          // Force Chrome to fire the event
-          speechSynthesis.getVoices();
-        });
-        // Final retry after async gap
-        load();
       }
     },
 
     speak(text, rate = 1, callback) {
-      // Chrome bug: cancel() then immediate speak() can mute audio;
-      // use a micro-delay to separate them
-      window.speechSynthesis.cancel();
-      setTimeout(() => {
+      // Chrome bugs: (1) speechSynthesis can get stuck in "paused" state,
+      // (2) cancel() + immediate speak() can mute audio.
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      synth.resume();
+
+      const doSpeak = () => {
         const utter = new SpeechSynthesisUtterance(text || '');
         utter.lang = 'en-US';
         utter.rate = rate;
         utter.volume = 1;
-        if (this._voices && this._voices.length > 0) {
-          const preferred = this._voices.find(
-            v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Google UK')
-          ) || this._voices[0];
+
+        // Refresh voices each time — Chrome may change them across tabs/sessions
+        const voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+        if (voices.length) {
+          // Try Windows voices first (David, Zira, Mark), then macOS (Samantha, Karen), then Google
+          const preferred = voices.find(
+            v => v.name.includes('Microsoft David') || v.name.includes('David')
+          ) || voices.find(
+            v => v.name.includes('Zira') || v.name.includes('Samantha') || v.name.includes('Karen')
+          ) || voices.find(
+            v => v.name.includes('Google') || v.name.includes('Mark')
+          ) || voices[0];
           utter.voice = preferred;
         }
-        if (callback) utter.onend = callback;
-        // Chrome fallback: re-read voices in case they changed
-        if (!this._voices || !this._voices.length) {
-          this._voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+
+        if (callback) {
+          utter.onend = callback;
+          // Chrome sometimes drops onend — fallback with a timeout
+          const wordCount = (text || '').split(/\s+/).length;
+          const fallbackMs = Math.max(3000, wordCount * 400 / rate);
+          setTimeout(() => {
+            if (synth.speaking || synth.pending) return;
+            if (callback) { callback(); callback = null; }
+          }, fallbackMs);
         }
-        speechSynthesis.speak(utter);
-      }, 50);
+
+        synth.speak(utter);
+      };
+
+      // 80ms delay gives Chrome enough time to flush the cancel
+      setTimeout(doSpeak, 80);
     },
 
     stop() {
-      window.speechSynthesis.cancel();
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      synth.resume();
     },
 
     isPlaying() {
